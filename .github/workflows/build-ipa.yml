@@ -1,0 +1,76 @@
+name: Build PixelV2 IPA (iOS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build PixelV2.ipa
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Compile & Package PixelV2 IPA
+        run: |
+          PROJ_PATH=$(find . -name "PixelV2.xcodeproj" | head -n 1)
+          if [ -z "$PROJ_PATH" ]; then
+            echo "Error: No se encontró PixelV2.xcodeproj en el repositorio."
+            exit 1
+          fi
+          PROJ_DIR=$(dirname "$PROJ_PATH")
+          echo "Directorio del proyecto: $PROJ_DIR"
+          cd "$PROJ_DIR"
+
+          # Limpiar compilaciones previas
+          rm -rf build package output
+
+          # Compilar el target PixelV2 sin requerir certificados de Apple
+          xcodebuild \
+            -project PixelV2.xcodeproj \
+            -target PixelV2 \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            SYMROOT="$(pwd)/build" \
+            OBJROOT="$(pwd)/build" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            build
+
+          echo "Buscando PixelV2.app compilado..."
+          if [ -d "build/Release-iphoneos/PixelV2.app" ]; then
+            APP_PATH="build/Release-iphoneos/PixelV2.app"
+          else
+            APP_PATH=$(find build -name "*.app" -type d | head -n 1)
+          fi
+
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "Error: No se encontró PixelV2.app compilado."
+            exit 1
+          fi
+
+          echo "Empaquetando IPA desde: $APP_PATH"
+          mkdir -p package/Payload
+          cp -R "$APP_PATH" package/Payload/PixelV2.app
+
+          cd package
+          zip -qr ../PixelV2.ipa Payload
+          cd ..
+
+          echo "Tamaño del IPA generado: $(ls -lh PixelV2.ipa | awk '{print $5}')"
+
+      - name: Upload PixelV2.ipa Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelV2-iOS-IPA
+          path: "**/PixelV2.ipa"
+          if-no-files-found: error
