@@ -20,6 +20,16 @@ struct PixelTheme {
     
     static let accentMint = Color(red: 48/255, green: 209/255, blue: 88/255)
     static let dangerRed = Color(red: 255/255, green: 69/255, blue: 58/255)
+    
+    static let mintWaveGradient = LinearGradient(
+        colors: [
+            Color(red: 48/255, green: 209/255, blue: 88/255).opacity(0.28),
+            Color(red: 48/255, green: 209/255, blue: 88/255).opacity(0.08),
+            Color.clear
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
 }
 
 extension View {

@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, copy) NSString *serverBaseUrl;
 
-+ (instancetype)sharedEngine;
++ (instancetype)sharedEngine NS_SWIFT_NAME(shared());
 
 - (void)injectModWithAlias:(NSString *)alias
         targetRelativePath:(NSString *)targetRelativePath

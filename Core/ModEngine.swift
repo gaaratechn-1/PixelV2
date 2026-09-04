@@ -122,7 +122,7 @@ final class ModEngine {
     ]
     
     func inject(mod: ModItemInfo, progress: ((Float) -> Void)? = nil, completion: @escaping (Bool, String) -> Void) {
-        InjectionEngine.sharedEngine().injectMod(
+        InjectionEngine.shared().injectMod(
             withAlias: mod.alias,
             targetRelativePath: mod.targetRelativePath,
             progress: progress != nil ? { p in progress?(p) } : nil

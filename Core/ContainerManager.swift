@@ -21,13 +21,13 @@ final class ContainerManager: ObservableObject {
     @Published var currentServerUrl: String = "http://192.168.1.15:8888" {
         didSet {
             UserDefaults.standard.set(currentServerUrl, forKey: "pixelv2_server_url")
-            InjectionEngine.sharedEngine().serverBaseUrl = currentServerUrl
+            InjectionEngine.shared().serverBaseUrl = currentServerUrl
         }
     }
     @Published var diagnosticLog: String = ""
     @Published var lastError: String? = nil
     
-    private let engine = InjectionEngine.sharedEngine()
+    private let engine = InjectionEngine.shared()
     
     private init() {
         if let savedUrl = UserDefaults.standard.string(forKey: "pixelv2_server_url"), !savedUrl.isEmpty {

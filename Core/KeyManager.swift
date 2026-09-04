@@ -53,7 +53,7 @@ final class KeyManager: ObservableObject {
             self.lastErrorMessage = nil
         }
         
-        let serverUrl = InjectionEngine.sharedEngine().serverBaseUrl ?? "http://192.168.1.15:8888"
+        let serverUrl = InjectionEngine.shared().serverBaseUrl
         guard let url = URL(string: "\(serverUrl)/api/v1/keys/validate") else {
             DispatchQueue.main.async {
                 self.isValidating = false
@@ -80,7 +80,7 @@ final class KeyManager: ObservableObject {
             DispatchQueue.main.async {
                 self.isValidating = false
                 
-                if let error = error {
+                if error != nil {
                     if self.isAuthorized && self.activeKey == cleanKey {
                         completion?(true, "Modo sin conexión temporal activo.")
                         return
