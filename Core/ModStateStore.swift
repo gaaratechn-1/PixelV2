@@ -90,8 +90,8 @@ final class ModStateStore: ObservableObject {
                     self.statusMessage = "✓ \(mod.uiName) aplicado con éxito"
                     
                     let restartPrompt = mod.isRestoreAction ? 
-                        "Archivo oficial restaurado con éxito.\n\nCierra Free Fire por completo de la multitarea y vuelve a abrirlo para cargar el estado limpio." :
-                        "Mod aplicado con éxito al contenedor.\n\n⚠️ PASO INDISPENSABLE:\nCierra Free Fire por completo de la multitarea (deslizando la app hacia arriba en el selector de aplicaciones) y ábrelo nuevamente para que el motor Unity cargue los nuevos recursos en memoria."
+                        "Archivo oficial restaurado con éxito en el contenedor.\n\nEl juego está en estado limpio y seguro para reiniciar o cerrar." :
+                        "Mod aplicado con éxito en el contenedor.\n\n🛡️ MÉTODO SEGURO ANTI-BAN:\n• Regresa a Free Fire (el recurso se encuentra activo en tu sesión actual).\n• No cierres el juego desde la multitarea con el mod puesto: antes de salir o cerrar Free Fire, pulsa 'Restaurar Original' para que el chequeo de inicio de Garena no detecte cambios en el próximo arranque."
                     self.presentAlert(title: "Inyección Exitosa", message: restartPrompt)
                     
                     // Vibración háptica de éxito

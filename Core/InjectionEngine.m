@@ -299,6 +299,10 @@ static NSString * const kDefaultServer = @"http://192.168.1.15:8888";
         // Limpiar archivo temporal residual si quedó
         [fm removeItemAtPath:tempFilePath error:nil];
 
+        // 8. Liberar sandbox lease inmediatamente (patrón AutoMod / Easy Cheats) para no dejar handles abiertos
+        [lease invalidate];
+        self->_retainedLease = nil;
+
         if (progressBlock) {
             dispatch_async(dispatch_get_main_queue(), ^{ progressBlock(1.0f); });
         }
