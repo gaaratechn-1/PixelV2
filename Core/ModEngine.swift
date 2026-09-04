@@ -31,6 +31,10 @@ struct ModItemInfo: Identifiable, Equatable {
     let fallbackFilename: String
     let isRestoreAction: Bool
     let iconSystemName: String
+    
+    var targetRelativePath: String {
+        return "\(targetDir)/\(fallbackFilename)"
+    }
 }
 
 final class ModEngine {
