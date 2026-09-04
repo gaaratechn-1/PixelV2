@@ -105,26 +105,6 @@ struct KeyAuthView: View {
                             .cornerRadius(12)
                         }
                         .disabled(keyManager.isValidating || inputKey.trimmingCharacters(in: .whitespaces).isEmpty)
-                        
-                        // Opción de Modo Autónomo Local
-                        Button(action: {
-                            keyManager.validateKey("AUTONOMOUS") { success, msg in
-                                if !success {
-                                    self.statusAlert = msg
-                                    self.showAlert = true
-                                }
-                            }
-                        }) {
-                            Text("ACCEDER EN MODO AUTÓNOMO LOCAL")
-                                .font(.system(size: 11, weight: .bold))
-                                .tracking(0.5)
-                                .foregroundColor(PixelTheme.chromeSilver)
-                                .frame(maxWidth: .infinity)
-                                .padding(12)
-                                .background(Color.white.opacity(0.04))
-                                .cornerRadius(10)
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(PixelTheme.cardBorder, lineWidth: 1))
-                        }
                     }
                     .padding(24)
                     .pixelCardStyle()

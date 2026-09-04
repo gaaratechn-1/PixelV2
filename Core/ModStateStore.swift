@@ -86,9 +86,13 @@ final class ModStateStore: ObservableObject {
                         }
                         self.activeModIds.insert(mod.id)
                     }
-                    
                     UserDefaults.standard.set(Array(self.activeModIds), forKey: "pixelv2_active_mods")
                     self.statusMessage = "✓ \(mod.uiName) aplicado con éxito"
+                    
+                    let restartPrompt = mod.isRestoreAction ? 
+                        "Archivo oficial restaurado con éxito.\n\nCierra Free Fire por completo de la multitarea y vuelve a abrirlo para cargar el estado limpio." :
+                        "Mod aplicado con éxito al contenedor.\n\n⚠️ PASO INDISPENSABLE:\nCierra Free Fire por completo de la multitarea (deslizando la app hacia arriba en el selector de aplicaciones) y ábrelo nuevamente para que el motor Unity cargue los nuevos recursos en memoria."
+                    self.presentAlert(title: "Inyección Exitosa", message: restartPrompt)
                     
                     // Vibración háptica de éxito
                     let feedback = UINotificationFeedbackGenerator()

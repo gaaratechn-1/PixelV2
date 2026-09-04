@@ -14,14 +14,6 @@ struct ContainerExplorerView: View {
     @State private var currentRelativePath: String = ""
     @State private var directoryItems: [FileItem] = []
     
-    struct FileItem: Identifiable {
-        let id = UUID()
-        let name: String
-        let isDirectory: Bool
-        let size: Int64
-        let path: String
-    }
-    
     var body: some View {
         ZStack {
             PixelTheme.canvas.ignoresSafeArea()
@@ -137,26 +129,17 @@ struct ContainerExplorerView: View {
     }
     
     private func refreshContents() {
-        guard let root = containerManager.containerPath else {
-            directoryItems = []
-            return
+        if !containerManager.isContainerConnected {
+            containerManager.detectAndActivate { connected, _ in
+                if connected {
+                    self.directoryItems = self.containerManager.listDirectory(subpath: self.currentRelativePath)
+                } else {
+                    self.directoryItems = []
+                }
+            }
+        } else {
+            self.directoryItems = containerManager.listDirectory(subpath: currentRelativePath)
         }
-        
-        let fullPath = currentRelativePath.isEmpty ? root : (root as NSString).appendingPathComponent(currentRelativePath)
-        let fm = FileManager.default
-        
-        guard let contents = try? fm.contentsOfDirectory(atPath: fullPath) else {
-            directoryItems = []
-            return
-        }
-        
-        directoryItems = contents.compactMap { name -> FileItem? in
-            let itemPath = (fullPath as NSString).appendingPathComponent(name)
-            var isDir: ObjCBool = false
-            guard fm.fileExists(atPath: itemPath, isDirectory: &isDir) else { return nil }
-            let size = (try? fm.attributesOfItem(atPath: itemPath)[.size] as? Int64) ?? 0
-            return FileItem(name: name, isDirectory: isDir.boolValue, size: size, path: itemPath)
-        }.sorted { $0.isDirectory && !$1.isDirectory }
     }
     
     private func navigateTo(_ folder: String) {

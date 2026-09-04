@@ -9,6 +9,14 @@
 import Foundation
 import Combine
 
+struct FileItem: Identifiable {
+    let id = UUID()
+    let name: String
+    let isDirectory: Bool
+    let size: Int64
+    let path: String
+}
+
 final class ContainerManager: ObservableObject {
     static let shared = ContainerManager()
     
@@ -83,6 +91,26 @@ final class ContainerManager: ObservableObject {
                 }
                 completion?(connected, msg)
             }
+        }
+    }
+    
+    /// Lista el contenido de un subdirectorio del contenedor bajo privilegios activos de Sandbox
+    func listDirectory(subpath: String) -> [FileItem] {
+        var err: NSError? = nil
+        let rawItems = engine.listContainerDirectory(subpath, error: &err)
+        return rawItems.compactMap { dict in
+            guard let name = dict["name"] as? String,
+                  let isDirNum = dict["isDirectory"] as? NSNumber,
+                  let sizeNum = dict["size"] as? NSNumber,
+                  let path = dict["path"] as? String else {
+                return nil
+            }
+            return FileItem(
+                name: name,
+                isDirectory: isDirNum.boolValue,
+                size: sizeNum.int64Value,
+                path: path
+            )
         }
     }
 }

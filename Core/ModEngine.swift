@@ -26,7 +26,9 @@ struct ModItemInfo: Identifiable, Equatable {
     let category: ModCategory
     let badgeText: String
     let description: String
-    let targetRelativePath: String
+    let targetDir: String
+    let filePrefix: String
+    let fallbackFilename: String
     let isRestoreAction: Bool
     let iconSystemName: String
 }
@@ -43,7 +45,9 @@ final class ModEngine {
             category: .combat,
             badgeText: "HIGH INTENSITY",
             description: "Hitbox magnético crítico fijado al cuello/cabeza (98% precisión).",
-            targetRelativePath: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar/assetindexer.H5ak1JM1Eck",
+            targetDir: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar",
+            filePrefix: "assetindexer.H5ak1JM1Eck",
+            fallbackFilename: "assetindexer.H5ak1JM1Eck_7e_2FxRcJrEp_7e_2FMzeuqmY_7e_3D",
             isRestoreAction: false,
             iconSystemName: "scope"
         ),
@@ -55,7 +59,9 @@ final class ModEngine {
             category: .visual,
             badgeText: "ESP VISUAL",
             description: "Visión total a través de muros mediante sombreadores Metal sin prueba de profundidad.",
-            targetRelativePath: "Documents/contentcache/Optional/ios/gameassetbundles/shaders.HPt9DZviTSXL9hpGW9QNOMigNLA",
+            targetDir: "Documents/contentcache/Optional/ios/gameassetbundles",
+            filePrefix: "shaders.HPt9DZviTSXL9hpGW9QNOMigNLA",
+            fallbackFilename: "shaders.HPt9DZviTSXL9hpGW9QNOMigNLA_7e_3D",
             isRestoreAction: false,
             iconSystemName: "eye.fill"
         ),
@@ -67,7 +73,9 @@ final class ModEngine {
             category: .combat,
             badgeText: "STEALTH AIM",
             description: "Atracción legítima disimulada hacia el torso para evitar reportes de espectadores.",
-            targetRelativePath: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar/assetindexer.H5ak1JM1Eck",
+            targetDir: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar",
+            filePrefix: "assetindexer.H5ak1JM1Eck",
+            fallbackFilename: "assetindexer.H5ak1JM1Eck_7e_2FxRcJrEp_7e_2FMzeuqmY_7e_3D",
             isRestoreAction: false,
             iconSystemName: "shield.checkerboard"
         ),
@@ -79,7 +87,9 @@ final class ModEngine {
             category: .combat,
             badgeText: "BALANCED",
             description: "Magnetismo moderado y natural para juego competitivo.",
-            targetRelativePath: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar/assetindexer.H5ak1JM1Eck",
+            targetDir: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar",
+            filePrefix: "assetindexer.H5ak1JM1Eck",
+            fallbackFilename: "assetindexer.H5ak1JM1Eck_7e_2FxRcJrEp_7e_2FMzeuqmY_7e_3D",
             isRestoreAction: false,
             iconSystemName: "cross.circle.fill"
         ),
@@ -91,7 +101,9 @@ final class ModEngine {
             category: .performance,
             badgeText: "ULTRA SMOOTH",
             description: "Modificación del archivo de preferencias para desbloquear alta tasa de cuadros.",
-            targetRelativePath: "Library/Preferences/com.dts.freefireth.plist",
+            targetDir: "Library/Preferences",
+            filePrefix: "com.dts.freefireth.plist",
+            fallbackFilename: "com.dts.freefireth.plist",
             isRestoreAction: false,
             iconSystemName: "bolt.fill"
         ),
@@ -103,7 +115,9 @@ final class ModEngine {
             category: .restore,
             badgeText: "CLEAN RESTORE",
             description: "Restaura el assetindexer oficial original de Garena, devolviendo el avatar al estado limpio.",
-            targetRelativePath: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar/assetindexer.H5ak1JM1Eck",
+            targetDir: "Documents/contentcache/Compulsory/ios/gameassetbundles/avatar",
+            filePrefix: "assetindexer.H5ak1JM1Eck",
+            fallbackFilename: "assetindexer.H5ak1JM1Eck_7e_2FxRcJrEp_7e_2FMzeuqmY_7e_3D",
             isRestoreAction: true,
             iconSystemName: "arrow.counterclockwise.circle"
         ),
@@ -115,7 +129,9 @@ final class ModEngine {
             category: .restore,
             badgeText: "CLEAN RESTORE",
             description: "Restaura los sombreadores Metal originales de fábrica sin efectos visuales.",
-            targetRelativePath: "Documents/contentcache/Optional/ios/gameassetbundles/shaders.HPt9DZviTSXL9hpGW9QNOMigNLA",
+            targetDir: "Documents/contentcache/Optional/ios/gameassetbundles",
+            filePrefix: "shaders.HPt9DZviTSXL9hpGW9QNOMigNLA",
+            fallbackFilename: "shaders.HPt9DZviTSXL9hpGW9QNOMigNLA_7e_3D",
             isRestoreAction: true,
             iconSystemName: "arrow.counterclockwise.circle.fill"
         )
@@ -124,7 +140,9 @@ final class ModEngine {
     func inject(mod: ModItemInfo, progress: ((Float) -> Void)? = nil, completion: @escaping (Bool, String) -> Void) {
         InjectionEngine.shared().injectMod(
             withAlias: mod.alias,
-            targetRelativePath: mod.targetRelativePath,
+            targetDir: mod.targetDir,
+            filePrefix: mod.filePrefix,
+            fallbackFilename: mod.fallbackFilename,
             progress: progress != nil ? { p in progress?(p) } : nil
         ) { success, message in
             completion(success, message)
