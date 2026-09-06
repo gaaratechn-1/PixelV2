@@ -342,6 +342,8 @@ static NSString * const kDefaultServer = @"http://192.168.1.15:8888";
             fallbackFilename:fullFilename
                     progress:progressBlock
                   completion:completion];
+}
+
 - (void)injectDynamicAimWithPrecision:(NSInteger)precision
                              progress:(nullable void(^)(float progress))progressBlock
                            completion:(void(^)(BOOL success, NSString *message))completion {

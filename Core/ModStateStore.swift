@@ -19,6 +19,7 @@ final class ModStateStore: ObservableObject {
     @Published var statusMessage: String = "Listo para inyectar"
     @Published var showAlert: Bool = false
     @Published var alertTitle: String = ""
+    @Published var alertMessage: String = ""
     @Published var isRestoringAll: Bool = false
     @Published var availableCategories: [ModCategory] = [.all]
     
@@ -208,7 +209,7 @@ final class ModStateStore: ObservableObject {
             }
             
             let currentMod = restoreMods[index]
-            self.engine.inject(mod: currentMod) { [weak self] success, msg in
+            self.engine.inject(mod: currentMod) { success, msg in
                 var newErrors = errors
                 if !success {
                     newErrors.append("• \(currentMod.uiName): \(msg)")

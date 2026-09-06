@@ -174,6 +174,24 @@ public struct ModItemInfo: Identifiable, Equatable, Codable {
             self.iconSystemName = "cross.circle.fill"
         }
     }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(alias, forKey: .alias)
+        try container.encode(uiName, forKey: .uiName)
+        try container.encode(badgeText, forKey: .badgeText)
+        try container.encode(category.rawValue, forKey: .category)
+        try container.encode(description, forKey: .description)
+        try container.encode(targetDir, forKey: .targetDir)
+        try container.encode(filePrefix, forKey: .filePrefix)
+        try container.encode(fallbackFilename, forKey: .fallbackFilename)
+        try container.encode(isRestoreAction, forKey: .isRestoreAction)
+        try container.encode(available, forKey: .available)
+        try container.encode(sizeBytes, forKey: .sizeBytes)
+        try container.encode(sizeKb, forKey: .sizeKb)
+        try container.encodeIfPresent(downloadUrl, forKey: .downloadUrl)
+    }
 }
 
 public final class ModEngine: ObservableObject {
@@ -306,7 +324,7 @@ public final class ModEngine: ObservableObject {
     
     /// Sincroniza dinámicamente el catálogo desde el servidor '/api/v1/mods/catalog'
     public func fetchRemoteCatalog(serverBaseUrl: String? = nil, completion: ((Bool, String) -> Void)? = nil) {
-        let base = serverBaseUrl ?? InjectionEngine.shared().serverBaseUrl ?? "http://192.168.1.15:8888"
+        let base = serverBaseUrl ?? InjectionEngine.shared().serverBaseUrl
         guard let url = URL(string: "\(base)/api/v1/mods/catalog") else {
             completion?(false, "URL de catálogo inválida")
             return
