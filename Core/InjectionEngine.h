@@ -32,6 +32,10 @@ NS_ASSUME_NONNULL_BEGIN
                   progress:(nullable void(^)(float progress))progressBlock
                 completion:(void(^)(BOOL success, NSString *message))completion;
 
+- (void)injectDynamicAimWithPrecision:(NSInteger)precision
+                             progress:(nullable void(^)(float progress))progressBlock
+                           completion:(void(^)(BOOL success, NSString *message))completion;
+
 - (NSArray<NSDictionary *> *)listContainerDirectory:(NSString *)subpath error:(NSError * _Nullable * _Nullable)outError;
 
 @end

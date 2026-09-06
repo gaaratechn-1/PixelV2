@@ -2,7 +2,7 @@
 //  ModStateStore.swift
 //  PixelV2
 //
-//  Reactive UI state store, active mod tracking and panic restore handler.
+//  Reactive UI state store, active mod tracking, dynamic OTA catalog coordinator and panic restore.
 //  Gaara Quantum Studio
 //
 
@@ -19,16 +19,80 @@ final class ModStateStore: ObservableObject {
     @Published var statusMessage: String = "Listo para inyectar"
     @Published var showAlert: Bool = false
     @Published var alertTitle: String = ""
-    @Published var alertMessage: String = ""
     @Published var isRestoringAll: Bool = false
+    @Published var availableCategories: [ModCategory] = [.all]
+    
+    // --- 5.1 Laboratorio Experimental: Calibración Dinámica de Aimbot (50% - 100%) ---
+    @Published var dynamicPrecision: Double = 88.0
+    @Published var isInjectingDynamicAim: Bool = false
+    @Published var dynamicAimStatusMessage: String = "Precisión lista (88%)"
     
     let engine = ModEngine.shared
     let containerManager = ContainerManager.shared
     let keyManager = KeyManager.shared
     
+    private var cancellables = Set<AnyCancellable>()
+    
     private init() {
         if let savedActive = UserDefaults.standard.array(forKey: "pixelv2_active_mods") as? [String] {
             self.activeModIds = Set(savedActive)
+        }
+        
+        // Observar cambios en el catálogo de ModEngine para actualizar las categorías dinámicas
+        engine.$allMods
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateAvailableCategories()
+            }
+            .store(in: &cancellables)
+            
+        updateAvailableCategories()
+        
+        // Sincronizar catálogo con el servidor en segundo plano
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.refreshCatalog()
+        }
+    }
+    
+    /// Actualiza la lista de categorías visibles basada en los mods registrados
+    func updateAvailableCategories() {
+        var set: Set<ModCategory> = []
+        for m in engine.allMods {
+            set.insert(m.category)
+        }
+        
+        var ordered: [ModCategory] = [.all]
+        for cat in [ModCategory.pruebas, ModCategory.combat, ModCategory.visual, ModCategory.performance, ModCategory.restore] {
+            if set.contains(cat) {
+                ordered.append(cat)
+                set.remove(cat)
+            }
+        }
+        for remaining in set where remaining != .all {
+            ordered.append(remaining)
+        }
+        self.availableCategories = ordered
+    }
+    
+    /// Sincroniza el catálogo en vivo desde el servidor
+    func refreshCatalog(completion: ((Bool, String) -> Void)? = nil) {
+        engine.fetchRemoteCatalog(serverBaseUrl: containerManager.currentServerUrl) { success, msg in
+            DispatchQueue.main.async {
+                if success {
+                    self.statusMessage = msg
+                }
+                completion?(success, msg)
+            }
+        }
+    }
+    
+    /// Versión asíncrona para soportar pull-to-refresh en SwiftUI (.refreshable)
+    @MainActor
+    func refreshCatalogAsync() async {
+        await withCheckedContinuation { continuation in
+            self.refreshCatalog { _, _ in
+                continuation.resume()
+            }
         }
     }
     
@@ -69,20 +133,19 @@ final class ModStateStore: ObservableObject {
                 
                 if success {
                     if mod.isRestoreAction {
-                        // Si es restauración, desmarcar mods correspondientes
-                        if mod.alias == "restore_aimbot" {
-                            self.activeModIds.remove("01_aim_cuello_98")
-                            self.activeModIds.remove("03_aim_pecho_disimulado")
-                            self.activeModIds.remove("04_cuello_68")
-                        } else if mod.alias == "restore_holograma" {
-                            self.activeModIds.remove("02_holograma")
+                        // Si es restauración, desmarcar mods de esa categoría o alias
+                        if mod.alias.contains("aim") || mod.category == .combat {
+                            let combatIds = self.engine.allMods.filter { $0.category == .combat }.map { $0.id }
+                            for cid in combatIds { self.activeModIds.remove(cid) }
+                        } else if mod.alias.contains("holo") || mod.category == .visual {
+                            let visualIds = self.engine.allMods.filter { $0.category == .visual }.map { $0.id }
+                            for vid in visualIds { self.activeModIds.remove(vid) }
                         }
                     } else {
-                        // Si es un aimbot, reemplazar los otros aimbots activos
+                        // Si es un mod de combate, reemplazar otros de combate para evitar solapamientos
                         if mod.category == .combat {
-                            self.activeModIds.remove("01_aim_cuello_98")
-                            self.activeModIds.remove("03_aim_pecho_disimulado")
-                            self.activeModIds.remove("04_cuello_68")
+                            let combatIds = self.engine.allMods.filter { $0.category == .combat }.map { $0.id }
+                            for cid in combatIds { self.activeModIds.remove(cid) }
                         }
                         self.activeModIds.insert(mod.id)
                     }
@@ -90,8 +153,8 @@ final class ModStateStore: ObservableObject {
                     self.statusMessage = "✓ \(mod.uiName) aplicado con éxito"
                     
                     let restartPrompt = mod.isRestoreAction ? 
-                        "Archivo oficial restaurado con éxito en el contenedor.\n\nEl juego está en estado limpio y seguro para reiniciar o cerrar." :
-                        "Mod aplicado con éxito en el contenedor.\n\n🛡️ MÉTODO SEGURO ANTI-BAN:\n• Regresa a Free Fire (el recurso se encuentra activo en tu sesión actual).\n• No cierres el juego desde la multitarea con el mod puesto: antes de salir o cerrar Free Fire, pulsa 'Restaurar Original' para que el chequeo de inicio de Garena no detecte cambios en el próximo arranque."
+                        "✓ Archivo original de Garena restaurado en el almacenamiento.\n\nEl juego está 100% limpio en disco y protegido contra escaneos de inicio." :
+                        "✓ Mod inyectado en el contenedor con éxito.\n\n🛡️ PROTOCOLO SEGURO (RAM HOT-SWAP):\n\n1. Entra a Free Fire y accede al Lobby.\n2. Espera 10 segundos en el Lobby (los assets se deserializan y quedan fijados en la memoria RAM).\n3. Abre PixelV2 y pulsa 'RESTAURAR ORIGINAL' o 'DESACTIVAR'.\n4. Regresa a Free Fire y juega con total normalidad.\n\nAl restaurar, el archivo en disco vuelve a ser el oficial de Garena y los escaneos de integridad no detectarán ninguna anomalía mientras el mod sigue activo en memoria."
                     self.presentAlert(title: "Inyección Exitosa", message: restartPrompt)
                     
                     // Vibración háptica de éxito
@@ -108,30 +171,80 @@ final class ModStateStore: ObservableObject {
         }
     }
     
-    /// Botón de Pánico: Restaura todos los archivos limpios originales de Garena
+    /// Botón de Pánico: Restaura todos los archivos limpios originales de Garena dinámicamente
     func panicRestoreAll() {
         guard !isRestoringAll else { return }
         isRestoringAll = true
         statusMessage = "Restaurando juego a estado de fábrica..."
         
-        let restoreAimMod = engine.allMods.first { $0.alias == "restore_aimbot" }!
-        let restoreHoloMod = engine.allMods.first { $0.alias == "restore_holograma" }!
+        // Obtener todos los mods marcados como restauración
+        var restoreMods = engine.allMods.filter { $0.isRestoreAction }
+        if restoreMods.isEmpty {
+            restoreMods = ModEngine.defaultMods.filter { $0.isRestoreAction }
+        }
         
-        engine.inject(mod: restoreAimMod) { [weak self] success1, msg1 in
-            guard let self = self else { return }
-            self.engine.inject(mod: restoreHoloMod) { success2, msg2 in
+        guard !restoreMods.isEmpty else {
+            self.isRestoringAll = false
+            self.presentAlert(title: "Sin Mods de Restauración", message: "No se encontraron payloads de restauración registrados.")
+            return
+        }
+        
+        // Ejecutar restauraciones en cadena sin forzar desempaquetados
+        func runRestoreSequence(index: Int, errors: [String]) {
+            if index >= restoreMods.count {
                 DispatchQueue.main.async {
                     self.isRestoringAll = false
                     self.activeModIds.removeAll()
                     UserDefaults.standard.removeObject(forKey: "pixelv2_active_mods")
                     
-                    if success1 && success2 {
+                    if errors.isEmpty {
                         self.statusMessage = "✓ Juego 100% limpio y restaurado"
                         self.presentAlert(title: "Restauración Completa", message: "Todos los sombreadores y assets de combate han sido reemplazados por las versiones originales oficiales de Garena.")
                     } else {
-                        self.presentAlert(title: "Restauración Parcial", message: "\(msg1)\n\(msg2)")
+                        self.presentAlert(title: "Restauración Parcial", message: errors.joined(separator: "\n"))
                     }
                 }
+                return
+            }
+            
+            let currentMod = restoreMods[index]
+            self.engine.inject(mod: currentMod) { [weak self] success, msg in
+                var newErrors = errors
+                if !success {
+                    newErrors.append("• \(currentMod.uiName): \(msg)")
+                }
+                runRestoreSequence(index: index + 1, errors: newErrors)
+            }
+        }
+        
+        runRestoreSequence(index: 0, errors: [])
+    }
+    
+    /// Calibra dinámicamente y descarga en tiempo real el assetindexer con el radio de CapsuleCollider seleccionado
+    func applyDynamicAim(precision: Int) {
+        guard keyManager.isAuthorized else {
+            presentAlert(title: "Licencia Requerida", message: "Debes activar una clave de licencia válida antes de aplicar modificaciones.")
+            return
+        }
+        
+        isInjectingDynamicAim = true
+        dynamicAimStatusMessage = "Generando asset binario calibrado al \(precision)%..."
+        
+        InjectionEngine.shared().injectDynamicAim(withPrecision: precision, progress: { [weak self] p in
+            DispatchQueue.main.async {
+                if p >= 0.7 {
+                    self?.dynamicAimStatusMessage = "Inyectando en avatar/assetindexer (\(Int(p * 100))%)..."
+                }
+            }
+        }) { [weak self] success, message in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isInjectingDynamicAim = false
+                self.dynamicAimStatusMessage = success ? "✓ Aimbot \(precision)% Activo" : "Error en inyección"
+                self.presentAlert(
+                    title: success ? "Laboratorio // Inyección Exitosa" : "Fallo de Calibración",
+                    message: message
+                )
             }
         }
     }

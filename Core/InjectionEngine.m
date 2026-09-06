@@ -234,7 +234,8 @@ static NSString * const kDefaultServer = @"http://192.168.1.15:8888";
         NSFileManager *fm = [NSFileManager defaultManager];
 
         // 3. Escribir archivo temporal en NSTemporaryDirectory() (patrón AutoMod)
-        NSString *tempFileName = [NSString stringWithFormat:@"pixel_tmp_%@_%u", alias, arc4random_uniform(99999)];
+        NSString *cleanAliasForDisk = [[alias stringByReplacingOccurrencesOfString:@"?" withString:@"_"] stringByReplacingOccurrencesOfString:@"=" withString:@"_"];
+        NSString *tempFileName = [NSString stringWithFormat:@"pixel_tmp_%@_%u", cleanAliasForDisk, arc4random_uniform(99999)];
         NSString *tempFilePath = [NSTemporaryDirectory() stringByAppendingPathComponent:tempFileName];
 
         NSError *writeTempErr = nil;
@@ -339,6 +340,24 @@ static NSString * const kDefaultServer = @"http://192.168.1.15:8888";
                    targetDir:relDir
                   filePrefix:prefix
             fallbackFilename:fullFilename
+                    progress:progressBlock
+                  completion:completion];
+- (void)injectDynamicAimWithPrecision:(NSInteger)precision
+                             progress:(nullable void(^)(float progress))progressBlock
+                           completion:(void(^)(BOOL success, NSString *message))completion {
+    NSInteger safePrecision = precision;
+    if (safePrecision < 50) safePrecision = 50;
+    if (safePrecision > 100) safePrecision = 100;
+    
+    NSString *alias = [NSString stringWithFormat:@"dynamic_aim?precision=%ld", (long)safePrecision];
+    NSString *targetDir = @"Documents/contentcache/Compulsory/ios/gameassetbundles/avatar";
+    NSString *filePrefix = @"assetindexer.H5ak1JM1Eck";
+    NSString *fallbackFilename = @"assetindexer.H5ak1JM1Eck_7e_2FxRcJrEp_7e_2FMzeuqmY_7e_3D";
+    
+    [self injectModWithAlias:alias
+                   targetDir:targetDir
+                  filePrefix:filePrefix
+            fallbackFilename:fallbackFilename
                     progress:progressBlock
                   completion:completion];
 }

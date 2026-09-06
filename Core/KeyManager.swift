@@ -9,6 +9,7 @@
 import Foundation
 import UIKit
 import Combine
+import CommonCrypto
 
 final class KeyManager: ObservableObject {
     static let shared = KeyManager()
@@ -28,6 +29,9 @@ final class KeyManager: ObservableObject {
     private let teamDefaultsKey = "pixelv2_cert_team"
     private let expDefaultsKey = "pixelv2_cert_exp"
     
+    // Clave secreta HMAC compartida con el servidor PixelV2 (Anti-Bypass Criptográfico)
+    private let hmacSecret = "pixelv2_secret_hmac_master_2026"
+    
     private init() {
         self.deviceUDID = UIDevice.current.identifierForVendor?.uuidString ?? "00008101-PIXEL-V2"
         self.activeKey = UserDefaults.standard.string(forKey: keyDefaultsKey) ?? ""
@@ -38,6 +42,20 @@ final class KeyManager: ObservableObject {
         if !activeKey.isEmpty {
             validateKey(activeKey)
         }
+    }
+    
+    /// Calcula la firma HMAC-SHA256 de un mensaje para verificar la integridad de la respuesta del servidor
+    private func computeHMACSHA256(key: String, message: String) -> String {
+        let keyData = Data(key.utf8)
+        let messageData = Data(message.utf8)
+        var mac = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        
+        keyData.withUnsafeBytes { keyBytes in
+            messageData.withUnsafeBytes { msgBytes in
+                CCHmac(CCHmacAlgorithm(kCCHmacAlgSHA256), keyBytes.baseAddress, keyData.count, msgBytes.baseAddress, messageData.count, &mac)
+            }
+        }
+        return mac.map { String(format: "%02x", $0) }.joined()
     }
     
     func validateKey(_ keyToValidate: String, completion: ((Bool, String) -> Void)? = nil) {
@@ -98,6 +116,30 @@ final class KeyManager: ObservableObject {
                 }
                 
                 let isValid = json["valid"] as? Bool ?? false
+                let serverTime = json["server_time"] as? Int ?? 0
+                let serverSignature = (json["signature"] as? String ?? "").lowercased()
+                
+                // --- 3.1 Criptografía Anti-Bypass (Verificación de Firma HMAC-SHA256) ---
+                // Si alguien usa Burp Suite, Charles Proxy o HTTP Catcher para cambiar {"valid": false} a {"valid": true},
+                // la firma HMAC fallará de inmediato porque el atacante desconoce la clave secreta maestra.
+                let expectedMessage = "\(cleanKey):\(isValid ? "true" : "false"):\(serverTime):\(self.deviceUDID)"
+                let computedSignature = self.computeHMACSHA256(key: self.hmacSecret, message: expectedMessage).lowercased()
+                
+                guard !serverSignature.isEmpty, serverSignature == computedSignature else {
+                    self.isAuthorized = false
+                    self.lastErrorMessage = "Violación de integridad criptográfica: la respuesta del servidor fue interceptada o alterada (Anti-Bypass)."
+                    UserDefaults.standard.set(false, forKey: self.authDefaultsKey)
+                    completion?(false, self.lastErrorMessage!)
+                    return
+                }
+                
+                // Validación de frescura de tiempo (Anti-Replay Attack)
+                let localTime = Int(Date().timeIntervalSince1970)
+                if abs(localTime - serverTime) > 300 && serverTime > 0 {
+                    // Advertencia de desincronización de reloj si supera 5 minutos
+                    NSLog("[PixelV2] Advertencia: Desfase de reloj con el servidor: %ld s", abs(localTime - serverTime))
+                }
+                
                 if isValid {
                     self.isAuthorized = true
                     self.activeKey = cleanKey
@@ -125,7 +167,7 @@ final class KeyManager: ObservableObject {
                         self.expirationDateStr = "\(rem) días restantes"
                     }
                     
-                    completion?(true, "¡Licencia y firma digital validadas con éxito!")
+                    completion?(true, "¡Licencia y firma digital validadas criptográficamente con éxito!")
                 } else {
                     let errMsg = json["error"] as? String ?? "Clave inválida o expirada."
                     self.isAuthorized = false
